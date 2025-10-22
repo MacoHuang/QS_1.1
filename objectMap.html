@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html> 
+<head> 
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" /> 
+  <title>Google Maps Multiple Markers</title> 
+  <script src="https://maps.google.com/maps/api/js?key=AIzaSyDXLjvqw0JVvEB-bcuChk_gQfe8O_gcP_I&libraries=marker&callback=initMap&loading=async" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.4/openlocationcode.min.js" 
+          integrity="sha512-nNdmCJgFefLPn6W79uEUxH2n4+qbc0kJM8uBD8f7GlmusrQN9L13hpSBRxLHdLs+6oSDurcCuDlBXVKaz/hpcA==" 
+          crossorigin="anonymous" 
+          referrerpolicy="no-referrer">
+  </script>
+</head> 
+<body>
+  <div id="map" style="width: 100%; height: 100vh;"></div>
+
+  <script type="text/javascript">
+
+    
+    var objectMapDatas = JSON.parse('<?!= positions ?>');
+    var locations = {
+      building: [],
+      land: []
+    };
+
+    for (var i = 0; i < objectMapDatas.length; i++) {
+      var mapData = objectMapDatas[i];
+      try {
+        var mapPosition = mapData.position.split(',');
+        console.log(mapPosition);
+        mapData.mapPosition = mapPosition;
+        if(mapData.objectType === 'building') {
+          locations.building.push(mapData);  
+        } else if(mapData.objectType === 'land') {
+          locations.land.push(mapData);
+        }
+      } catch (error) {
+        console.error("Error decoding Open Location Code:", error);
+      }
+    }
+    
+    var centerLat = (locations.building.reduce((acc, loc) => acc + Number(loc.mapPosition[0]), 0) + locations.land.reduce((acc, loc) => acc + Number(loc.mapPosition[0]), 0)) / (locations.building.length + locations.land.length);
+    var centerLng = (locations.building.reduce((acc, loc) => acc + Number(loc.mapPosition[1]), 0) + locations.land.reduce((acc, loc) => acc + Number(loc.mapPosition[1]), 0)) / (locations.building.length + locations.land.length);
+    
+    async function initMap() {
+
+      const { Map } = await google.maps.importLibrary("maps");
+
+      const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+
+      var map = new Map(document.getElementById('map'), {
+        zoom: 12,
+        center: { lat: centerLat, lng: centerLng },
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        mapId: "915669d5cd3299d8",
+      });
+      
+      var infowindow = new google.maps.InfoWindow();
+
+      var marker, i;
+      
+      for(var key in locations) {
+        for (i = 0; i < locations[key].length; i++) {  
+          const landPin = new PinElement({
+            background: "#FCC603",
+            glyphColor: "#FFA200",
+            borderColor: "#000",
+          });
+          const buildingPin = new PinElement({
+            background: "#0398FC",
+            glyphColor: "#293591",
+            borderColor: "#000",
+          });
+          var pin = (key === 'land') ? landPin : buildingPin;
+          marker = new AdvancedMarkerElement({
+            position: { lat: Number(locations[key][i].mapPosition[0]), lng: Number(locations[key][i].mapPosition[1]) },
+            map: map,
+            title: locations[key][i].objectName,
+            content: pin.element,
+          });
+          google.maps.event.addListener(marker, 'click', (function(marker, key, i) {
+            return function() {
+              infowindow.setHeaderDisabled(true);
+              infowindow.setContent("<b>" + locations[key][i].objectName + "</b><div>總價: " + locations[key][i].valuation + "</div>");
+              infowindow.open(map, marker);
+            }
+          })(marker, key, i));
+        }
+      }
+    }
+  </script>
+</body>
+</html>
