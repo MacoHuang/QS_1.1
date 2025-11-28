@@ -26,11 +26,7 @@ function onEdit(e) {
 function doGet(request) {
     var path = request === null || request === void 0 ? void 0 : request.pathInfo;
     switch (path) {
-        case 'map':
-            var positions = getAllPositions();
-            var mapTemplate = HtmlService.createTemplateFromFile('objectMap');
-            mapTemplate.positions = JSON.stringify(positions);
-            return mapTemplate.evaluate().addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+
         case 'index':
         default:
             var template = HtmlService.createTemplateFromFile('index');
@@ -332,14 +328,7 @@ var LandHeaders;
 
 function searchObjects(contractType, objectType, objectPattern, objectName, valuationFrom, valuationTo, landSizeFrom, landSizeTo, roadNearby, roomFrom, roomTo, isHasParkingSpace, buildingAgeFrom, buildingAgeTo, direction, objectWidthFrom, objectWidthTo, contactPerson) {
 
-    // Cache Key Generation
-    var cache = CacheService.getScriptCache();
-    var cacheKey = "search_" + Utilities.base64Encode(JSON.stringify(arguments));
-    var cachedResult = cache.get(cacheKey);
 
-    if (cachedResult != null) {
-        return cachedResult;
-    }
 
     var listOfSheet = new Array();
     var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -560,76 +549,11 @@ function searchObjects(contractType, objectType, objectPattern, objectName, valu
     });
 
     var result = JSON.stringify(extractedData);
-    cache.put(cacheKey, result, 7200); // Cache for 2 hours (7200 seconds)
+
     return result;
 }
 
-function getAllPositions() {
-    var spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var buildingSheet = spreadsheet.getSheetByName('Building');
-    var landSheet = spreadsheet.getSheetByName('Land');
-    var buildingDataRange = buildingSheet === null || buildingSheet === void 0 ? void 0 : buildingSheet.getDataRange();
-    var landDataRange = landSheet === null || landSheet === void 0 ? void 0 : landSheet.getDataRange();
-    var buildingValues = buildingDataRange === null || buildingDataRange === void 0 ? void 0 : buildingDataRange.getValues();
-    var landValues = landDataRange === null || landDataRange === void 0 ? void 0 : landDataRange.getValues();
-    // var buildingHeaders = buildingValues === null || buildingValues === void 0 ? void 0 : buildingValues.shift(); // Unused
-    // var landHeaders = landValues === null || landValues === void 0 ? void 0 : landValues.shift(); // Unused
-    if (buildingValues) buildingValues.shift();
-    if (landValues) landValues.shift();
 
-    var positions = new Array();
-    if (buildingValues) {
-        positions = positions.concat(buildingValues
-            .filter(function (row) {
-                if (!row[BuildingHeaders.POSITION]) {
-                    return false;
-                }
-                var value = row[BuildingHeaders.POSITION].split(' ')[0];
-                return value !== '' && value !== null && value !== undefined && isNaN(Number(value));
-            })
-            .map(function (row) {
-                var objectMapData = {
-                    objectType: 'building',
-                    objectNumber: row[BuildingHeaders.OBJECT_NUMBER],
-                    objectName: row[BuildingHeaders.OBJECT_NAME],
-                    contractType: row[BuildingHeaders.CONTRACT_TYPE],
-                    location: row[BuildingHeaders.LOCATION],
-                    position: row[BuildingHeaders.POSITION].split(' ')[0],
-                    valuation: row[BuildingHeaders.VALUATION],
-                    description: row[BuildingHeaders.OBJECT_NAME],
-                    memo: row[BuildingHeaders.MEMO],
-                    contractPerson: row[BuildingHeaders.CONTACT_PERSON]
-                };
-                return objectMapData;
-            }));
-    }
-    if (landValues) {
-        positions = positions.concat(landValues
-            .filter(function (row) {
-                if (!row[LandHeaders.POSITION]) {
-                    return false;
-                }
-                var value = row[LandHeaders.POSITION].split(',');
-                return value != null && value.length == 2 && !isNaN(value[0]) && !isNaN(value[1]);
-            })
-            .map(function (row) {
-                var objectMapData = {
-                    objectType: 'land',
-                    objectNumber: row[LandHeaders.OBJECT_NUMBER],
-                    objectName: row[LandHeaders.OBJECT_NAME],
-                    contractType: row[LandHeaders.CONTRACT_TYPE],
-                    location: row[LandHeaders.LOCATION],
-                    position: row[LandHeaders.POSITION],
-                    valuation: row[LandHeaders.VALUATION],
-                    description: row[LandHeaders.OBJECT_NAME],
-                    memo: row[LandHeaders.MEMO],
-                    contractPerson: row[LandHeaders.CONTACT_PERSON]
-                };
-                return objectMapData;
-            }));
-    }
-    return positions;
-}
 
 function searchLastNumOfNumberedObjects(objectType) {
     var listOfSheet = new Array();
